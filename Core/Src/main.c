@@ -13,6 +13,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define APROX_DEGREE 16
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -83,19 +84,35 @@ int main(void)
   /* USER CODE END 2 */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint32_t pmValue = 0;
-  uint32_t tm1Value = 0;
+  uint32_t pmValues[APROX_DEGREE] = { 0 };
+  uint32_t tmExternalValues[APROX_DEGREE] = { 0 };
+  
+  uint32_t sumPm = 0;
+  uint32_t sumTmExternal = 0;
+
+  uint32_t * currentPm = pmValues;
+  uint32_t * currentTmExternal = tmExternalValues;
 
   while(1) {
+	  HAL_ADC_Start(&hadc1);
+	  HAL_ADC_Start(&hadc2);
 	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {
-		  pmValue = HAL_ADC_GetValue(&hadc1);
+      uint32_t * next = (currentPm == pmValues + APROX_DEGREE - 1)?pmValues:currentPm + 1;
+		  *currentPm = HAL_ADC_GetValue(&hadc1);
+		  sumPm += *currentPm;
+		  sumPm -= *next;
+		  currentPm = next;
 	  }
 	  if(HAL_ADC_PollForConversion(&hadc2, 1) == HAL_OK) {
-		  tm1Value = HAL_ADC_GetValue(&hadc2);
+		  uint32_t * next = (currentTmExternal == tmExternalValues + APROX_DEGREE - 1)?tmExternalValues:currentTmExternal + 1;
+		  *currentTmExternal = HAL_ADC_GetValue(&hadc2);
+		  sumTmExternal += *currentTmExternal;
+		  sumTmExternal -= *next;
+		  currentTmExternal = next;
 	  }
 
-	  htim4.Instance->CCR1 = pmValue;
-	  htim4.Instance->CCR2 = tm1Value;
+	  htim4.Instance->CCR1 = sumPm / APROX_DEGREE;
+	  htim4.Instance->CCR2 = sumTmExternal / APROX_DEGREE;
 	/* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
