@@ -9,6 +9,12 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef enum {
+	LEVEL_ZERO,
+  LEVEL_ONE,
+  LEVEL_TWO,
+  LEVEL_THREE
+} EMERGENCY_LEVEL;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -79,11 +85,13 @@ int main(void)
 
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
-  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
   /* USER CODE END 2 */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  EMERGENCY_LEVEL emergency;
+
   uint32_t pmValues[APROX_DEGREE] = { 0 };
   uint32_t tmExternalValues[APROX_DEGREE] = { 0 };
   
@@ -94,13 +102,16 @@ int main(void)
   uint32_t * currentTmExternal = tmExternalValues;
 
   while(1) {
-	  HAL_ADC_Start(&hadc1);
-	  HAL_ADC_Start(&hadc2);
+	  emergency = LEVEL_ZERO;
+
 	  if(HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {
       uint32_t * next = (currentPm == pmValues + APROX_DEGREE - 1)?pmValues:currentPm + 1;
 		  *currentPm = HAL_ADC_GetValue(&hadc1);
 		  sumPm += *currentPm;
 		  sumPm -= *next;
+		  if(*currentPm > 3000) {
+			  ++emergency;
+		  }
 		  currentPm = next;
 	  }
 	  if(HAL_ADC_PollForConversion(&hadc2, 1) == HAL_OK) {
@@ -108,12 +119,35 @@ int main(void)
 		  *currentTmExternal = HAL_ADC_GetValue(&hadc2);
 		  sumTmExternal += *currentTmExternal;
 		  sumTmExternal -= *next;
+		  if(*currentTmExternal > 3000) {
+			  ++emergency;
+		  }
 		  currentTmExternal = next;
 	  }
 
 	  htim4.Instance->CCR1 = sumPm / APROX_DEGREE;
 	  htim4.Instance->CCR2 = sumTmExternal / APROX_DEGREE;
-	/* USER CODE END WHILE */
+
+	  switch(emergency) {
+	  case LEVEL_ONE:
+		  HAL_TIM_Base_Start_IT(&htim3);
+		  htim3.Instance->ARR = 500;
+		  break;
+	  case LEVEL_TWO:
+		  HAL_TIM_Base_Start_IT(&htim3);
+		  htim3.Instance->ARR = 200;
+		  break;
+	  case LEVEL_THREE:
+		  HAL_TIM_Base_Start_IT(&htim3);
+		  htim3.Instance->ARR = 100;
+		  break;
+	  case LEVEL_ZERO:
+	  default:
+		  HAL_TIM_Base_Stop_IT(&htim3);
+		  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
+		  break;
+	  }
+    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
@@ -365,12 +399,23 @@ static void MX_TIM4_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PD14 */
+  GPIO_InitStruct.Pin = GPIO_PIN_14;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
 }
 
