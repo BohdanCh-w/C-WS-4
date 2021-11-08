@@ -35,6 +35,9 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
+const uint16_t potentiometer_emergency = 3000;
+const uint16_t temperature_internal_emergency = 1000;
+const uint16_t temperature_external_emergency = 680;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,7 +120,7 @@ int main(void)
 		  *currentTmInternal = HAL_ADC_GetValue(&hadc1);
 		  sumTmInternal += *currentTmInternal;
 		  sumTmInternal -= *next;
-		  if(*currentTmInternal > 3000) {
+		  if(*currentTmInternal > temperature_internal_emergency) {
 			  ++emergency;
 		  }
 		  currentTmInternal = next;
@@ -127,7 +130,7 @@ int main(void)
 		  *currentTmExternal = HAL_ADC_GetValue(&hadc2);
 		  sumTmExternal += *currentTmExternal;
 		  sumTmExternal -= *next;
-		  if(*currentTmExternal > 3000) {
+		  if(*currentTmExternal > temperature_external_emergency) {
 			  ++emergency;
 		  }
 		  currentTmExternal = next;
@@ -137,7 +140,7 @@ int main(void)
 		  *currentPm = HAL_ADC_GetValue(&hadc3);
 		  sumPm += *currentPm;
 		  sumPm -= *next;
-		  if(*currentPm > 3000) {
+		  if(*currentPm > potentiometer_emergency) {
 			  ++emergency;
 		  }
 		  currentPm = next;
